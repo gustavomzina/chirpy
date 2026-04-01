@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 )
@@ -18,6 +19,7 @@ func main() {
 	serveMux.HandleFunc("GET /api/healthz", handlerReadiness)
 	serveMux.Handle("GET /admin/metrics", apiConfig.handlerMetrics())
 	serveMux.Handle("POST /admin/reset", apiConfig.handlerResetMetrics())
+	serveMux.HandleFunc("POST /api/validate_chirp", handlerChirpValidator)
 
 	server := http.Server{
 		Addr:    ":" + port,
@@ -36,4 +38,30 @@ func handlerReadiness(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func handlerChirpValidator(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Body string `json:"body"`
+	}
+
+	type returnVals struct {
+		Valid bool `json:"valid"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	in := parameters{}
+	err := decoder.Decode(&in)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
+		return
+	}
+
+	const maxChirpLength = 140
+	if len(in.Body) > maxChirpLength {
+		respondWithError(w, http.StatusBadRequest, "Chirp is too long", err)
+		return
+	}
+
+	respondWithJson(w, http.StatusOK, returnVals{Valid: true})
 }
