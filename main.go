@@ -16,8 +16,8 @@ func main() {
 	serveMux.Handle("GET /app/", apiConfig.middlewareMetricsInc(fileserverHandler))
 
 	serveMux.HandleFunc("GET /api/healthz", handlerReadiness)
-	serveMux.Handle("GET /api/metrics", apiConfig.handlerMetrics())
-	serveMux.Handle("POST /api/reset", apiConfig.handlerResetMetrics())
+	serveMux.Handle("GET /admin/metrics", apiConfig.handlerMetrics())
+	serveMux.Handle("POST /admin/reset", apiConfig.handlerResetMetrics())
 
 	server := http.Server{
 		Addr:    ":" + port,
