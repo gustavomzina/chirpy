@@ -1,17 +1,30 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strings"
+
+	"github.com/gustavomzina/chirpy/internal/database"
+	_ "github.com/lib/pq"
 )
 
 func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
-	apiConfig := &apiConfig{}
+	dbUrl := os.Getenv("CHIRPY_DB_DSN")
+	db, err := sql.Open("postgres", dbUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
+	dbQueries := database.New(db)
+
+	apiConfig := &apiConfig{queries: dbQueries}
+
 	serveMux := http.NewServeMux()
 
 	fileserverHandler := http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))

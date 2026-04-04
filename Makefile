@@ -19,6 +19,11 @@ confirm:
 # DEVELOPMENT
 # ==================================================================================== #
 
+## run/api: run the application
+.PHONY: run/api
+run/api:
+	go run .
+
 ## db/psql: connect to the database using psql
 .PHONY: db/psql
 db/psql:
