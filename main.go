@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/gustavomzina/chirpy/internal/database"
 	_ "github.com/lib/pq"
 )
@@ -17,13 +19,21 @@ func main() {
 	const port = "8080"
 
 	dbUrl := os.Getenv("CHIRPY_DB_DSN")
+	if dbUrl == "" {
+		log.Fatal("CHIRPY_DB_DSN must be set")
+	}
+	platform := os.Getenv("CHIRPY_PLATFORM")
+	if platform == "" {
+		log.Fatal("CHIRPY_PLATFORM must be set")
+	}
+
 	db, err := sql.Open("postgres", dbUrl)
 	if err != nil {
 		log.Fatal(err)
 	}
 	dbQueries := database.New(db)
 
-	apiConfig := &apiConfig{queries: dbQueries}
+	apiConfig := &apiConfig{queries: dbQueries, platform: platform}
 
 	serveMux := http.NewServeMux()
 
@@ -35,6 +45,8 @@ func main() {
 	serveMux.Handle("POST /admin/reset", apiConfig.handlerResetMetrics())
 	serveMux.HandleFunc("POST /api/validate_chirp", handlerChirpValidator)
 
+	serveMux.Handle("POST /api/users", handlerAddUser(apiConfig))
+
 	server := http.Server{
 		Addr:    ":" + port,
 		Handler: serveMux,
@@ -42,6 +54,46 @@ func main() {
 
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	log.Fatal(server.ListenAndServe())
+}
+
+func handlerAddUser(apiConfig *apiConfig) http.Handler {
+	type parameters struct {
+		Email string `json:"email"`
+	}
+
+	type returnVals struct {
+		Id        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Email     string    `json:"email"`
+	}
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		decoder := json.NewDecoder(r.Body)
+		in := parameters{}
+		err := decoder.Decode(&in)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
+			return
+		}
+
+		user, err := apiConfig.queries.CreateUser(r.Context(), in.Email)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Couldn't create user", err)
+			return
+		}
+
+		ret := returnVals{
+			Id:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
+		}
+
+		respondWithJson(w, http.StatusCreated, ret)
+	}
+
+	return http.HandlerFunc(handler)
 }
 
 func handlerReadiness(w http.ResponseWriter, r *http.Request) {

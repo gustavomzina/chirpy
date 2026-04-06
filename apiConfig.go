@@ -12,6 +12,7 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	queries        *database.Queries
+	platform       string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -48,6 +49,17 @@ func (cfg *apiConfig) handlerMetrics() http.Handler {
 func (cfg *apiConfig) handlerResetMetrics() http.Handler {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("content-type", "text/plain; charset=utf-8")
+		if cfg.platform != "dev" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		err := cfg.queries.DeleteAllUsers(r.Context())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
 		w.WriteHeader(http.StatusOK)
 		cfg.fileserverHits.Store(0)
 	}
