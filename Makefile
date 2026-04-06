@@ -22,7 +22,7 @@ confirm:
 ## run/api: run the application
 .PHONY: run/api
 run/api:
-	go run .
+	go run ./cmd/chirpy
 
 ## db/psql: connect to the database using psql
 .PHONY: db/psql
