@@ -1,6 +1,9 @@
 package chirps
 
-import "strings"
+import (
+	"errors"
+	"strings"
+)
 
 func filterBadWords(s string) string {
 	badWords := map[string]struct{}{
@@ -19,4 +22,13 @@ func filterBadWords(s string) string {
 	}
 
 	return strings.Join(words, " ")
+}
+
+func validateChirpBody(body string) (string, error) {
+	const maxChirpLength = 140
+	if len(body) > maxChirpLength {
+		return "", errors.New("Chirp is too long")
+	}
+
+	return filterBadWords(body), nil
 }

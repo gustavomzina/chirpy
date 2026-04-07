@@ -24,6 +24,11 @@ confirm:
 run/api:
 	go run ./cmd/chirpy
 
+## db/generate: generate models using sqlc
+.PHONY: run/api
+db/generate:
+	sqlc generate
+
 ## db/psql: connect to the database using psql
 .PHONY: db/psql
 db/psql:

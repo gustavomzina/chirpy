@@ -52,7 +52,7 @@ func main() {
 	serveMux.Handle("POST /admin/reset", metricsHandler.HandleReset())
 
 	// Rotas de domínio de Chirps
-	serveMux.HandleFunc("POST /api/validate_chirp", chirpHandler.HandleValidate)
+	serveMux.HandleFunc("POST /api/chirps", chirpHandler.HandleCreate)
 
 	// Rotas de domínio de Usuários
 	serveMux.HandleFunc("POST /api/users", userHandler.HandleCreate)
