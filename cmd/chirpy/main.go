@@ -53,6 +53,7 @@ func main() {
 
 	// Rotas de domínio de Chirps
 	serveMux.HandleFunc("POST /api/chirps", chirpHandler.HandleCreate)
+	serveMux.HandleFunc("GET /api/chirps", chirpHandler.HandleGetAll)
 
 	// Rotas de domínio de Usuários
 	serveMux.HandleFunc("POST /api/users", userHandler.HandleCreate)

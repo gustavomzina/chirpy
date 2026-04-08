@@ -56,3 +56,35 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		UserId:    chirp.UserID,
 	})
 }
+
+func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
+	type returnVal struct {
+		Id        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Body      string    `json:"body"`
+		UserId    uuid.UUID `json:"user_id"`
+	}
+
+	chirps, err := h.DB.GetChirps(r.Context())
+	if err != nil {
+		webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't get chirps", err)
+		return
+	}
+
+	ret := make([]returnVal, 0, len(chirps))
+
+	for _, chirp := range chirps {
+		val := returnVal{
+			Id:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserId:    chirp.UserID,
+		}
+
+		ret = append(ret, val)
+	}
+
+	webutil.RespondWithJson(w, http.StatusOK, ret)
+}
