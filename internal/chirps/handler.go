@@ -2,7 +2,9 @@ package chirps
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -84,6 +86,49 @@ func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
 		}
 
 		ret = append(ret, val)
+	}
+
+	webutil.RespondWithJson(w, http.StatusOK, ret)
+}
+
+func (h *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
+	type returnVal struct {
+		Id        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Body      string    `json:"body"`
+		UserId    uuid.UUID `json:"user_id"`
+	}
+
+	id := r.PathValue("id")
+	if strings.TrimSpace(id) == "" {
+		webutil.RespondWithError(w, http.StatusBadRequest, "Chirp id is required", errors.New("chirp id is required"))
+		return
+	}
+
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		webutil.RespondWithError(w, http.StatusInternalServerError, "Invalid chirp id", err)
+		return
+	}
+
+	chirp, err := h.DB.GetChirp(r.Context(), uid)
+	if err != nil {
+		if strings.Contains(err.Error(), "sql: no rows in result set") {
+			webutil.RespondWithError(w, http.StatusNotFound, "No chirp found", errors.New("no chirp found"))
+			return
+		}
+
+		webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't get chirp", err)
+		return
+	}
+
+	ret := returnVal{
+		Id:        chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body:      chirp.Body,
+		UserId:    chirp.UserID,
 	}
 
 	webutil.RespondWithJson(w, http.StatusOK, ret)
