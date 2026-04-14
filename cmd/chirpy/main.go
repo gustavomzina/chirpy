@@ -58,6 +58,7 @@ func main() {
 
 	// Rotas de domínio de Usuários
 	serveMux.HandleFunc("POST /api/users", userHandler.HandleCreate)
+	serveMux.HandleFunc("POST /api/login", userHandler.HandleLogin)
 
 	// 5. Inicialização do Servidor
 	server := http.Server{

@@ -1,6 +1,7 @@
 package chirps
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -114,8 +115,8 @@ func (h *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 	chirp, err := h.DB.GetChirp(r.Context(), uid)
 	if err != nil {
-		if strings.Contains(err.Error(), "sql: no rows in result set") {
-			webutil.RespondWithError(w, http.StatusNotFound, "No chirp found", errors.New("no chirp found"))
+		if errors.Is(err, sql.ErrNoRows) {
+			webutil.RespondWithError(w, http.StatusNotFound, "No chirp found", err)
 			return
 		}
 
