@@ -26,6 +26,10 @@ func main() {
 	if platformName == "" {
 		log.Fatal("CHIRPY_PLATFORM must be set")
 	}
+	chripyApiSecret := os.Getenv("CHIRPY_API_SECRET")
+	if chripyApiSecret == "" {
+		log.Fatal("CHIRPY_API_SECRET must be set")
+	}
 
 	// 2. Inicialização do Banco de Dados
 	db, err := sql.Open("postgres", dbUrl)
@@ -35,8 +39,8 @@ func main() {
 	dbQueries := database.New(db)
 
 	// 3. Inicialização dos Handlers de domínio
-	userHandler := users.Handler{DB: dbQueries}
-	chirpHandler := chirps.Handler{DB: dbQueries}
+	userHandler := users.Handler{DB: dbQueries, TokenSecret: chripyApiSecret}
+	chirpHandler := chirps.Handler{DB: dbQueries, TokenSecret: chripyApiSecret}
 
 	metricsHandler := platform.Handler{Platform: platformName, DBResetter: dbQueries}
 
@@ -59,6 +63,8 @@ func main() {
 	// Rotas de domínio de Usuários
 	serveMux.HandleFunc("POST /api/users", userHandler.HandleCreate)
 	serveMux.HandleFunc("POST /api/login", userHandler.HandleLogin)
+	serveMux.HandleFunc("POST /api/refresh", userHandler.HandleRefresh)
+	serveMux.HandleFunc("POST /api/revoke", userHandler.HandleRevoke)
 
 	// 5. Inicialização do Servidor
 	server := http.Server{

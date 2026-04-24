@@ -9,18 +9,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gustavomzina/chirpy/internal/auth"
 	"github.com/gustavomzina/chirpy/internal/database"
 	"github.com/gustavomzina/chirpy/internal/webutil"
 )
 
 type Handler struct {
-	DB *database.Queries
+	DB          *database.Queries
+	TokenSecret string
 }
 
 func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Body   string    `json:"body"`
-		UserId uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	type returnVals struct {
@@ -31,9 +32,21 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		UserId    uuid.UUID `json:"user_id"`
 	}
 
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't get token", err)
+		return
+	}
+
+	userId, err := auth.ValidateJWT(token, h.TokenSecret)
+	if err != nil {
+		webutil.RespondWithError(w, http.StatusUnauthorized, "unauthorized", err)
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	in := parameters{}
-	err := decoder.Decode(&in)
+	err = decoder.Decode(&in)
 	if err != nil {
 		webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
@@ -45,7 +58,7 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chirp, err := h.DB.CreateChirp(r.Context(), database.CreateChirpParams{UserID: in.UserId, Body: cleanedBody})
+	chirp, err := h.DB.CreateChirp(r.Context(), database.CreateChirpParams{UserID: userId, Body: cleanedBody})
 	if err != nil {
 		webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't create chirp", err)
 		return

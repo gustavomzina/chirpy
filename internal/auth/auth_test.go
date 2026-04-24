@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -65,6 +67,47 @@ func TestCheckPasswordHash(t *testing.T) {
 			}
 			if !tt.wantErr && match != tt.matchPassword {
 				t.Errorf("CheckPasswordHash() expects %v, got %v", tt.matchPassword, match)
+			}
+		})
+	}
+}
+
+func TestGetBearerToken(t *testing.T) {
+	tokenString := "1234567890"
+	httpHeader := http.Header{}
+	httpHeader.Add("authorization", fmt.Sprintf("bearer %s", tokenString))
+
+	httpHeader2 := http.Header{}
+
+	tests := []struct {
+		name        string
+		header      http.Header
+		tokenString string
+		wantErr     bool
+	}{
+		{
+			name:        "bearer removal",
+			header:      httpHeader,
+			tokenString: tokenString,
+			wantErr:     false,
+		},
+		{
+			name:        "Invalid token",
+			header:      httpHeader2,
+			tokenString: "",
+			wantErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tstring, err := GetBearerToken(tt.header)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetBearerToken() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if tstring != tt.tokenString {
+				t.Errorf("GetBearerToken() gotTokenString = %v, want %v", tstring, tt.tokenString)
 			}
 		})
 	}
