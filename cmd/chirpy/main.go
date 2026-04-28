@@ -65,6 +65,7 @@ func main() {
 	serveMux.HandleFunc("POST /api/login", userHandler.HandleLogin)
 	serveMux.HandleFunc("POST /api/refresh", userHandler.HandleRefresh)
 	serveMux.HandleFunc("POST /api/revoke", userHandler.HandleRevoke)
+	serveMux.HandleFunc("PUT /api/users", userHandler.HandleUpdate)
 
 	// 5. Inicialização do Servidor
 	server := http.Server{

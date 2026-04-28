@@ -228,3 +228,69 @@ func (h *Handler) HandleRevoke(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (h *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	type returnVals struct {
+		Id        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Email     string    `json:"email"`
+	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		webutil.RespondWithError(w, http.StatusUnauthorized, "Access token malformed or missing", err)
+		return
+	}
+
+	userId, err := auth.ValidateJWT(token, h.TokenSecret)
+	if err != nil {
+		webutil.RespondWithError(w, http.StatusUnauthorized, "unauthorized", err)
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	in := parameters{}
+	err = decoder.Decode(&in)
+	if err != nil {
+		webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
+		return
+	}
+
+	if len(in.Password) < 5 {
+		webutil.RespondWithError(w, http.StatusBadRequest, "Password minimum length = 5", errors.New("minimum length"))
+		return
+	}
+
+	hash, err := auth.HashPassword(in.Password)
+	if err != nil {
+		webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't hash password", err)
+		return
+	}
+
+	updateUserParams := database.UpdateUserParams{
+		ID:             userId,
+		Email:          in.Email,
+		HashedPassword: hash,
+	}
+
+	user, err := h.DB.UpdateUser(r.Context(), updateUserParams)
+	if err != nil {
+		webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't update user", err)
+		return
+	}
+
+	ret := returnVals{
+		Id:        user.ID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email:     user.Email,
+	}
+
+	webutil.RespondWithJson(w, http.StatusOK, ret)
+}
