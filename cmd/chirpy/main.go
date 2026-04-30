@@ -59,6 +59,7 @@ func main() {
 	serveMux.HandleFunc("POST /api/chirps", chirpHandler.HandleCreate)
 	serveMux.HandleFunc("GET /api/chirps", chirpHandler.HandleGetAll)
 	serveMux.HandleFunc("GET /api/chirps/{id}", chirpHandler.HandleGet)
+	serveMux.HandleFunc("DELETE /api/chirps/{id}", chirpHandler.HandleDelete)
 
 	// Rotas de domínio de Usuários
 	serveMux.HandleFunc("POST /api/users", userHandler.HandleCreate)

@@ -147,3 +147,53 @@ func (h *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 	webutil.RespondWithJson(w, http.StatusOK, ret)
 }
+
+func (h *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		webutil.RespondWithError(w, http.StatusUnauthorized, "Couldn't get token", err)
+		return
+	}
+
+	userId, err := auth.ValidateJWT(token, h.TokenSecret)
+	if err != nil {
+		webutil.RespondWithError(w, http.StatusUnauthorized, "unauthorized", err)
+		return
+	}
+
+	id := r.PathValue("id")
+	if strings.TrimSpace(id) == "" {
+		webutil.RespondWithError(w, http.StatusBadRequest, "Chirp id is required", errors.New("chirp id is required"))
+		return
+	}
+
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		webutil.RespondWithError(w, http.StatusInternalServerError, "Invalid chirp id", err)
+		return
+	}
+
+	chirp, err := h.DB.GetChirp(r.Context(), uid)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			webutil.RespondWithError(w, http.StatusNotFound, "No chirp found", err)
+			return
+		}
+
+		webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't get chirp", err)
+		return
+	}
+
+	if chirp.UserID != userId {
+		webutil.RespondWithError(w, http.StatusForbidden, "Not chirp author", errors.New("not chirp author"))
+		return
+	}
+
+	err = h.DB.DeleteChirp(r.Context(), database.DeleteChirpParams{ID: chirp.ID, UserID: userId})
+	if err != nil {
+		webutil.RespondWithError(w, http.StatusInternalServerError, "Could not delete chirp", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
