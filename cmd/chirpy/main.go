@@ -9,6 +9,7 @@ import (
 	"github.com/gustavomzina/chirpy/internal/chirps"
 	"github.com/gustavomzina/chirpy/internal/database"
 	"github.com/gustavomzina/chirpy/internal/platform"
+	"github.com/gustavomzina/chirpy/internal/polka"
 	"github.com/gustavomzina/chirpy/internal/users"
 	_ "github.com/lib/pq"
 )
@@ -41,6 +42,7 @@ func main() {
 	// 3. Inicialização dos Handlers de domínio
 	userHandler := users.Handler{DB: dbQueries, TokenSecret: chripyApiSecret}
 	chirpHandler := chirps.Handler{DB: dbQueries, TokenSecret: chripyApiSecret}
+	polkaHandler := polka.Handler{DB: dbQueries, TokenSecret: chripyApiSecret}
 
 	metricsHandler := platform.Handler{Platform: platformName, DBResetter: dbQueries}
 
@@ -67,6 +69,9 @@ func main() {
 	serveMux.HandleFunc("POST /api/refresh", userHandler.HandleRefresh)
 	serveMux.HandleFunc("POST /api/revoke", userHandler.HandleRevoke)
 	serveMux.HandleFunc("PUT /api/users", userHandler.HandleUpdate)
+
+	// Rotas webhook polka
+	serveMux.HandleFunc("POST /api/polka/webhooks", polkaHandler.HandleUpgradeUser)
 
 	// 5. Inicialização do Servidor
 	server := http.Server{
