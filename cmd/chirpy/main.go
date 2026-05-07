@@ -29,7 +29,11 @@ func main() {
 	}
 	chripyApiSecret := os.Getenv("CHIRPY_API_SECRET")
 	if chripyApiSecret == "" {
-		log.Fatal("CHIRPY_API_SECRET must be set")
+		log.Fatal("CHIRPY_API_SECRET environment variable is not set")
+	}
+	polkaAPIKey := os.Getenv("POLKA_KEY")
+	if polkaAPIKey == "" {
+		log.Fatal("POLKA_KEY environment variable is not set")
 	}
 
 	// 2. Inicialização do Banco de Dados
@@ -42,7 +46,7 @@ func main() {
 	// 3. Inicialização dos Handlers de domínio
 	userHandler := users.Handler{DB: dbQueries, TokenSecret: chripyApiSecret}
 	chirpHandler := chirps.Handler{DB: dbQueries, TokenSecret: chripyApiSecret}
-	polkaHandler := polka.Handler{DB: dbQueries, TokenSecret: chripyApiSecret}
+	polkaHandler := polka.Handler{DB: dbQueries, APIKey: polkaAPIKey}
 
 	metricsHandler := platform.Handler{Platform: platformName, DBResetter: dbQueries}
 

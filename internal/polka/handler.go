@@ -7,13 +7,14 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/gustavomzina/chirpy/internal/auth"
 	"github.com/gustavomzina/chirpy/internal/database"
 	"github.com/gustavomzina/chirpy/internal/webutil"
 )
 
 type Handler struct {
-	DB          *database.Queries
-	TokenSecret string
+	DB     *database.Queries
+	APIKey string
 }
 
 func (h *Handler) HandleUpgradeUser(w http.ResponseWriter, r *http.Request) {
@@ -24,9 +25,15 @@ func (h *Handler) HandleUpgradeUser(w http.ResponseWriter, r *http.Request) {
 		} `json:"data"`
 	}
 
+	apiKey, err := auth.GetApiKey(r.Header)
+	if err != nil || apiKey != h.APIKey {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	in := parameters{}
-	err := decoder.Decode(&in)
+	err = decoder.Decode(&in)
 	if err != nil {
 		webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return

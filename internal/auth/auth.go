@@ -18,6 +18,8 @@ type TokenType string
 
 const TokenTypeAccess TokenType = "chirpy-access"
 
+var ErrNoAuthHeaderIncluded = errors.New("no auth header included in request")
+
 func HashPassword(password string) (string, error) {
 	return argon2id.CreateHash(password, argon2id.DefaultParams)
 }
@@ -77,17 +79,29 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 }
 
 func GetBearerToken(headers http.Header) (string, error) {
-	authToken := headers.Get("authorization")
-	if authToken == "" {
-		return "", errors.New("authorization not found")
+	authHeader := headers.Get("Authorization")
+	if authHeader == "" {
+		return "", ErrNoAuthHeaderIncluded
+	}
+	splitAuth := strings.Split(authHeader, " ")
+	if len(splitAuth) < 2 || splitAuth[0] != "Bearer" {
+		return "", errors.New("malformed authorization header")
 	}
 
-	fields := strings.Fields(authToken)
-	if len(fields) != 2 {
-		return "", errors.New("invalid authorization header")
+	return splitAuth[1], nil
+}
+
+func GetAPIKey(headers http.Header) (string, error) {
+	authHeader := headers.Get("Authorization")
+	if authHeader == "" {
+		return "", ErrNoAuthHeaderIncluded
+	}
+	splitAuth := strings.Split(authHeader, " ")
+	if len(splitAuth) < 2 || splitAuth[0] != "ApiKey" {
+		return "", errors.New("malformed authorization header")
 	}
 
-	return fields[1], nil
+	return splitAuth[1], nil
 }
 
 func MakeRefreshToken() string {
