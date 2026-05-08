@@ -82,10 +82,31 @@ func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
 		UserId    uuid.UUID `json:"user_id"`
 	}
 
-	chirps, err := h.DB.GetChirps(r.Context())
+	authorId := r.URL.Query().Get("author_id")
+	authorUUID, err := uuid.Parse(authorId)
 	if err != nil {
-		webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't get chirps", err)
+		webutil.RespondWithError(w, http.StatusBadRequest, "Invalid user id", err)
 		return
+	}
+
+	var chirps []database.Chirp
+
+	if authorId != "" {
+		chirps, err = h.DB.GetChirpsForUserID(r.Context(), authorUUID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't get chirps", err)
+			return
+		}
+	} else {
+		chirps, err = h.DB.GetChirps(r.Context())
+		if err != nil {
+			webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't get chirps", err)
+			return
+		}
 	}
 
 	ret := make([]returnVal, 0, len(chirps))

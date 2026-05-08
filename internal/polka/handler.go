@@ -25,7 +25,7 @@ func (h *Handler) HandleUpgradeUser(w http.ResponseWriter, r *http.Request) {
 		} `json:"data"`
 	}
 
-	apiKey, err := auth.GetApiKey(r.Header)
+	apiKey, err := auth.GetAPIKey(r.Header)
 	if err != nil || apiKey != h.APIKey {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
