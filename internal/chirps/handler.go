@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -73,6 +74,18 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func authorIDFromRequest(r *http.Request) (uuid.UUID, error) {
+	authorIDString := r.URL.Query().Get("author_id")
+	if authorIDString == "" {
+		return uuid.Nil, nil
+	}
+	authorID, err := uuid.Parse(authorIDString)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return authorID, nil
+}
+
 func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
 	type returnVal struct {
 		Id        uuid.UUID `json:"id"`
@@ -82,31 +95,27 @@ func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
 		UserId    uuid.UUID `json:"user_id"`
 	}
 
-	authorId := r.URL.Query().Get("author_id")
-	authorUUID, err := uuid.Parse(authorId)
+	authorUUID, err := authorIDFromRequest(r)
 	if err != nil {
-		webutil.RespondWithError(w, http.StatusBadRequest, "Invalid user id", err)
+		webutil.RespondWithError(w, http.StatusBadRequest, "Invalid author id", err)
 		return
 	}
 
 	var chirps []database.Chirp
 
-	if authorId != "" {
+	if authorUUID != uuid.Nil {
 		chirps, err = h.DB.GetChirpsForUserID(r.Context(), authorUUID)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				w.WriteHeader(http.StatusNoContent)
-				return
-			}
-			webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't get chirps", err)
-			return
-		}
 	} else {
 		chirps, err = h.DB.GetChirps(r.Context())
-		if err != nil {
-			webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't get chirps", err)
+	}
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
+		webutil.RespondWithError(w, http.StatusInternalServerError, "Couldn't get chirps", err)
+		return
 	}
 
 	ret := make([]returnVal, 0, len(chirps))
@@ -122,6 +131,23 @@ func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
 
 		ret = append(ret, val)
 	}
+
+	sortOrder := "asc"
+	sortQueryParam := r.URL.Query().Get("sort")
+	if sortQueryParam == "desc" {
+		sortOrder = "desc"
+	}
+
+	slices.SortFunc(ret, func(a, b returnVal) int {
+		var ret = -1
+		if a.CreatedAt.After(b.CreatedAt) {
+			ret = 1
+		}
+		if sortOrder == "desc" {
+			ret = ret * (-1)
+		}
+		return ret
+	})
 
 	webutil.RespondWithJson(w, http.StatusOK, ret)
 }
